@@ -18,11 +18,10 @@ pluto.setRC({"pitch":1000,"roll":2000})
 
 pluto.TakeOff()
 
-print(pluto.getAltitude())
+for i in range(100):
+    print(f'Altitiude: {pluto.getAltitude()}')
 
-pluto.TakeOff()
-
-print(pluto.getAltitude())
+    print(f'VarioMeter: {pluto.getVariometer()}')
 
 # print(pluto.getVariometer())
 

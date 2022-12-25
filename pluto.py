@@ -1,4 +1,6 @@
 from socket import timeout
+from threading import Thread, Event
+from time import sleep, time
 import telnetlib
 import struct
 
@@ -11,6 +13,29 @@ class Pluto(object):
     HOST = "192.168.4.1"
     PORT = 23
     MSP = telnetlib.Telnet()
+    soc = None
+
+    def __init__(self):
+        self.monitorThread = Thread(target=self.monitorSerialPort)
+        self.exitNow = Event()
+        self.responses = {}
+        self.responseTimeout = 3
+
+    def __del__(self):
+        if self.monitorThread.is_alive():
+            self.exitNow.set()
+
+    def waitForResponse(self, command):
+        if ((command) in self.responses):
+            startTime = time()
+            while True:
+                if self.responses[command].finished:
+                    return self.responses[command].data
+                if (time() - startTime > self.responseTimeout):
+                    return False
+                sleep(0)
+        else:
+            return False
 
     def setHostPort(self, host, port):
         self.HOST = host
@@ -19,21 +44,43 @@ class Pluto(object):
     def connect(self):
         try:
             self.MSP.open(self.HOST, self.PORT, 2)
+            self.soc=self.MSP.get_socket()
+            self.monitorThread.start()
+
         except timeout as e:
             print("[ERROR]:", end=' ')
             print(e)
 
     def disconnect(self):
+        if self.monitorThread.is_alive():
+            self.exitNow.set()
         self.MSP.close()
 
     def sendData(self, data):
         try:
             self.MSP.write(data)
+
         except OSError as e:
             print("[ERROR]:", end=' ')
             print(e)
             return False
         return True
+
+    class MSPResponse:
+        """Combine MSP response data and finished communication flag"""
+
+        def __init__(self):
+            self.finished = False
+            self.data = []
+
+    class MSPSTATES:
+        """Enum of MSP States"""
+        IDLE = 0
+        HEADER_START = 1
+        HEADER_M = 2
+        HEADER_ARROW = 3
+        HEADER_SIZE = 4
+        HEADER_CMD = 5
 
     class MSPCOMMANDS:
         MSP_NULL = 0
@@ -121,6 +168,7 @@ class Pluto(object):
                 checksum = (checksum ^ b)
 
         packet.append(checksum)
+        self.responses.update({command: self.MSPResponse()})
         return self.sendData(packet)
 
     def decodePacket(self, command, packet):
@@ -129,30 +177,64 @@ class Pluto(object):
             return packet[5:5+len]
         return None
 
-    def getData(self, command, expexted_length):
-        data = []
-        self.encodePacket(command)
-        conn = self.MSP.get_socket()
-        if (conn.recv(2) == b'$M'):
-            conn.recv(1)
-            leng = int.from_bytes(conn.recv(1))
-            if (command == int.from_bytes(conn.recv(1)) and leng == expexted_length):
-                checksum = leng ^ command
-                for i in range(0, leng):
-                    k = int.from_bytes(conn.recv(1))
-                    data.append(k)
-                    checksum = checksum ^ k
-
-                # if (checksum == conn.recv(1)):
-                #     return data
-                # else:
-                #     return None
-                print(data)
-                return data
+    def monitorSerialPort(self):
+        print("[LISTENING]")
+        state = self.MSPSTATES.IDLE
+        data = bytearray()
+        dataSize = 0
+        dataChecksum = 0
+        command = self.MSPCOMMANDS.MSP_NULL
+        inByte = None
+        while (not self.exitNow.isSet()):
+            try:
+                inByte = ord(self.soc.recv(1))
+            except:
+                pass
+            # print(inByte)
+            if (inByte != None):
+                if (state == self.MSPSTATES.IDLE):
+                    state = self.MSPSTATES.HEADER_START if (
+                        inByte == 36) else self.MSPSTATES.IDLE  # chr(36)=='$'
+                elif (state == self.MSPSTATES.HEADER_START):
+                    state = self.MSPSTATES.HEADER_M if (
+                        inByte == 77) else self.MSPSTATES.IDLE  # chr(77)=='M'
+                elif (state == self.MSPSTATES.HEADER_M):
+                    state = self.MSPSTATES.HEADER_ARROW if (
+                        inByte == 62) else self.MSPSTATES.IDLE  # chr(62)=='>'
+                elif (state == self.MSPSTATES.HEADER_ARROW):
+                    dataSize = inByte
+                    data = bytearray()
+                    dataChecksum = inByte
+                    state = self.MSPSTATES.HEADER_SIZE
+                elif (state == self.MSPSTATES.HEADER_SIZE):
+                    command = inByte
+                    dataChecksum = (dataChecksum ^ inByte)
+                    state = self.MSPSTATES.HEADER_CMD
+                elif (state == self.MSPSTATES.HEADER_CMD) and (len(data) < dataSize):
+                    data.append(inByte)
+                    dataChecksum = (dataChecksum ^ inByte)
+                elif (state == self.MSPSTATES.HEADER_CMD) and (len(data) >= dataSize):
+                    if (dataChecksum == inByte):
+                        # Good command, do something with it
+                        self.responses[command].finished = True
+                        self.responses[command].data = data
+                    else:
+                        self.responses[command].finished = True
+                        self.responses[command].data = None
+                    state = self.MSPSTATES.IDLE
+                    # end if
+                # end if
             else:
-                return None
-        else:
-            return None
+                sleep(0)
+            # end if
+        # end while
+        self.disconnect()
+        # end def monitorSerialPort
+
+    def getData(self, command):
+
+        self.encodePacket(command)
+        return self.waitForResponse(command)
 
     def setRC(self, values):
         data = bytearray()
@@ -214,6 +296,8 @@ class Pluto(object):
         data.append(ord('I'))
         data.append(ord('S'))
         self.encodePacket(0, data)
+        if self.monitorThread.is_alive():
+            self.exitNow.set()
 
     def setThrottle(self, value):
         self.setRC({"throttle": value})
@@ -252,14 +336,14 @@ class Pluto(object):
         self.setCommand(6)
 
     def getAltitude(self):
-        data = self.getData(self.MSPCOMMANDS.MSP_ALTITUDE, 6)
+        data = self.getData(self.MSPCOMMANDS.MSP_ALTITUDE)
         if (data):
             return self.toInt32(data[0:4])
         else:
             return None
 
     def getVariometer(self):
-        data = self.getData(self.MSPCOMMANDS.MSP_ALTITUDE, 6)
+        data = self.getData(self.MSPCOMMANDS.MSP_ALTITUDE)
         if (data):
             return self.toInt16(data[4:6])
         else:

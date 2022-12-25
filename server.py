@@ -50,7 +50,7 @@ def handle_client(conn, addr):
                 data.append((109))
                 for i in range(0,6):
                     data.append((0))
-                data.append((1))
+                data.append((107))
                 print(f'[SENDING] {data}')
                 conn.send(data)
 
