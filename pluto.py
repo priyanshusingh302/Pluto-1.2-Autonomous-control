@@ -214,25 +214,18 @@ class Pluto(object):
                     data.append(inByte)
                     dataChecksum = (dataChecksum ^ inByte)
                 elif (state == self.MSPSTATES.HEADER_CMD) and (len(data) >= dataSize):
-                    if (dataChecksum == inByte):
-                        # Good command, do something with it
+                    if (dataChecksum == inByte):            #If checksum matches
                         self.responses[command].finished = True
                         self.responses[command].data = data
                     else:
                         self.responses[command].finished = True
                         self.responses[command].data = None
                     state = self.MSPSTATES.IDLE
-                    # end if
-                # end if
             else:
                 sleep(0)
-            # end if
-        # end while
         self.disconnect()
-        # end def monitorSerialPort
 
     def getData(self, command):
-
         self.encodePacket(command)
         return self.waitForResponse(command)
 
@@ -345,6 +338,48 @@ class Pluto(object):
     def getVariometer(self):
         data = self.getData(self.MSPCOMMANDS.MSP_ALTITUDE)
         if (data):
+            return self.toInt16(data[4:6])
+        else:
+            return None
+
+    def getAcc(self):
+        data = self.getData(self.MSPCOMMANDS.MSP_RAW_IMU)
+        if(data):
+            return [self.toInt16(data[0:2]),self.toInt16(data[2:4]),self.toInt16(data[4:6])]
+        else:
+            return None
+
+    def getGyro(self):
+        data = self.getData(self.MSPCOMMANDS.MSP_RAW_IMU)
+        if(data):
+            return [self.toInt16(data[6:8]),self.toInt16(data[8:10]),self.toInt16(data[10:12])]
+        else:
+            return None
+
+    def getMag(self):
+        data = self.getData(self.MSPCOMMANDS.MSP_RAW_IMU)
+        if(data):
+            return [self.toInt16(data[12:14]),self.toInt16(data[14:16]),self.toInt16(data[16:18])]
+        else:
+            return None
+
+    def getRoll(self):
+        data = self.getData(self.MSPCOMMANDS.MSP_ATTITUDE)
+        if(data):
+            return self.toInt16(data[0:2])
+        else:
+            return None
+    
+    def getPitch(self):
+        data = self.getData(self.MSPCOMMANDS.MSP_ATTITUDE)
+        if(data):
+            return self.toInt16(data[2:4])
+        else:
+            return None
+            
+    def getYaw(self):
+        data = self.getData(self.MSPCOMMANDS.MSP_ATTITUDE)
+        if(data):
             return self.toInt16(data[4:6])
         else:
             return None

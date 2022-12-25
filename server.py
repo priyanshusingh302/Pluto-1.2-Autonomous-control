@@ -1,4 +1,6 @@
+import random
 import socket
+from tabnanny import check
 import threading
 
 HEADER = 1
@@ -42,15 +44,48 @@ def handle_client(conn, addr):
                 # conn.send("Msg received".encode(FORMAT))
                 conn.recv(1)
             if (command == 109):
-                data=bytearray()
+                data = bytearray()
                 data.append(ord('$'))
                 data.append(ord('M'))
                 data.append(ord('>'))
                 data.append((6))
                 data.append((109))
-                for i in range(0,6):
-                    data.append((0))
-                data.append((107))
+                checksum = 6 ^ 109
+                for i in range(0, 6):
+                    x = random.randint(1, 10)
+                    data.append(x)
+                    checksum = checksum ^ x
+                data.append(checksum)
+                print(f'[SENDING] {data}')
+                conn.send(data)
+            elif (command == 102):
+                data = bytearray()
+                data.append(ord('$'))
+                data.append(ord('M'))
+                data.append(ord('>'))
+                data.append((18))
+                data.append((102))
+                checksum = 18 ^ 102
+                for i in range(0, 18):
+                    x = random.randint(1, 10)
+                    data.append(x)
+                    checksum = checksum ^ x
+                data.append(checksum)
+                print(f'[SENDING] {data}')
+                conn.send(data)
+            elif (command == 108):
+                data = bytearray()
+                data.append(ord('$'))
+                data.append(ord('M'))
+                data.append(ord('>'))
+                data.append((6))
+                data.append((108))
+                checksum = 6 ^ 108
+                for i in range(0, 6):
+                    x = random.randint(1, 10)
+                    data.append(x)
+                    checksum = checksum ^ x
+                data.append(checksum)
                 print(f'[SENDING] {data}')
                 conn.send(data)
 
