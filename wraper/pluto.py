@@ -34,7 +34,6 @@ class Pluto(object):
             self.MSP.open(self.HOST, self.PORT, 2)
             self.soc = self.MSP.get_socket()
             self.monitorThread.start()
-
         except timeout as e:
             print("[ERROR]:", end=' ')
             print(e)
@@ -43,20 +42,6 @@ class Pluto(object):
         if self.monitorThread.is_alive():
             self.exitNow.set()
         self.MSP.close()
-
-    def sendData(self, data):
-        try:
-            self.MSP.write(data)
-        except AttributeError as e:
-            print("[ERROR]:", end=' ')
-            print(e)
-            return False
-        except OSError as e:
-            print("[ERROR]:", end=' ')
-            print(e)
-            return False
-
-        return True
 
     class MSPResponse:
         def __init__(self):
@@ -135,49 +120,6 @@ class Pluto(object):
     def fromUInt32(self, value):
         return struct.unpack("<BBBB", struct.pack("@I", value))
 
-    def waitForResponse(self, command):
-        if ((command) in self.responses):
-            startTime = time()
-            while True:
-                if self.responses[command].finished:
-                    return self.responses[command].data
-                if (time() - startTime > self.responseTimeout):
-                    return False
-                sleep(0)
-        else:
-            return False
-
-    def encodePacket(self, command, data=None):
-        if (data is None):
-            dataSize = 0
-        else:
-            if len(data) < 256:
-                dataSize = len(data)
-            else:
-                return False
-        packet = bytearray()
-        packet.append(ord('$'))
-        packet.append(ord('M'))
-        packet.append(ord('<'))
-        packet.append(dataSize)
-        checksum = dataSize
-        packet.append(command)
-        checksum = (checksum ^ command)
-        if (dataSize > 0):
-            for b in data:
-                packet.append(b)
-                checksum = (checksum ^ b)
-
-        packet.append(checksum)
-        self.responses.update({command: self.MSPResponse()})
-        return self.sendData(packet)
-
-    def decodePacket(self, command, packet):
-        len = int.from_bytes(packet[3])
-        if (int.from_bytes(packet[4]) == command):
-            return packet[5:5+len]
-        return None
-
     def monitorSerialPort(self):
         print("[LISTENING]")
         state = self.MSPSTATES.IDLE
@@ -225,6 +167,56 @@ class Pluto(object):
             else:
                 sleep(0)
         self.disconnect()
+
+    def sendData(self, data):
+        try:
+            self.MSP.write(data)
+        except AttributeError as e:
+            print("[ERROR]:", end=' ')
+            print(e)
+            return False
+        except OSError as e:
+            print("[ERROR]:", end=' ')
+            print(e)
+            return False
+        return True
+
+    def waitForResponse(self, command):
+        if ((command) in self.responses):
+            startTime = time()
+            while True:
+                if self.responses[command].finished:
+                    return self.responses[command].data
+                if (time() - startTime > self.responseTimeout):
+                    return False
+                sleep(0)
+        else:
+            return False
+
+    def encodePacket(self, command, data=None):
+        if (data is None):
+            dataSize = 0
+        else:
+            if len(data) < 256:
+                dataSize = len(data)
+            else:
+                return False
+        packet = bytearray()
+        packet.append(ord('$'))
+        packet.append(ord('M'))
+        packet.append(ord('<'))
+        packet.append(dataSize)
+        checksum = dataSize
+        packet.append(command)
+        checksum = (checksum ^ command)
+        if (dataSize > 0):
+            for b in data:
+                packet.append(b)
+                checksum = (checksum ^ b)
+
+        packet.append(checksum)
+        self.responses.update({command: self.MSPResponse()})
+        return self.sendData(packet)
 
     def getData(self, command):
         self.encodePacket(command)
@@ -284,7 +276,7 @@ class Pluto(object):
             return False
 
     def temp_disconnect(self):
-        # For testing and disconnecting from virtual server
+        '''For testing and disconnecting from virtual server'''
         data = bytearray()
         data.append(ord('!'))
         data.append(ord('D'))
@@ -295,60 +287,79 @@ class Pluto(object):
             self.exitNow.set()
 
     def setThrottle(self, value):
+        '''SET Throttle value  UNIT:PWM   RANGE:900-2100'''
         self.setRC({"throttle": value})
 
     def setPitch(self, value):
+        '''SET Pitch value  UNIT:PWM   RANGE:900-2100'''
         self.setRC({"pitch": value})
 
     def setRoll(self, value):
+        '''SET Roll value  UNIT:PWM   RANGE:900-2100'''
         self.setRC({"roll": value})
 
     def setYaw(self, value):
+        '''SET Yaw value  UNIT:PWM   RANGE:900-2100'''
         self.setRC({"yaw": value})
 
     def ARM(self):
+        '''ARM Pluto'''
         self.setRC({"aux4": 1500})
 
     def DISARM(self):
+        '''DISARM Pluto'''
         self.setRC({"aux4": 1000})
 
     def AltitudeHold_ON(self):
+        '''Toggles Altitude Hold Mode ON'''
         self.setRC({"aux3": 1500})
 
     def AltitudeHold_OFF(self):
+        '''Toggles Altitude Hold Mode OFF'''
         self.setRC({"aux3": 1000})
 
     def DevMode_ON(self):
+        '''Toggles Developer Mode ON'''
         self.setRC({"aux2": 1500})
 
     def DevMode_OFF(self):
+        '''Toggles Developer Mode OFF'''
         self.setRC({"aux2": 1000})
 
     def HeadFree_ON(self):
+        '''Toggles Headfree Mode ON'''
         self.setRC({"aux1": 1500})
 
     def HeadFree_OFF(self):
+        '''Toggles Headfree Mode OFF'''
         self.setRC({"aux1": 1000})
 
     def TakeOff(self):
+        '''Command for pluto to Take off'''
         self.setCommand(1)
 
     def Land(self):
+        '''Command for pluto to Land'''
         self.setCommand(2)
 
     def BackFlip(self):
+        '''Command for pluto to do backflip'''
         self.setCommand(3)
 
     def FrontFlip(self):
+        '''Command for pluto to do frontflip'''
         self.setCommand(4)
 
     def RightFlip(self):
+        '''Command for pluto to do rightflip'''
         self.setCommand(5)
 
     def LeftFlip(self):
+        '''Command for pluto to do leftflip'''
         self.setCommand(6)
 
     def getAltitude(self):
+        '''Returns estimated altitude. Units: Centimeters'''
         data = self.getData(self.MSPCOMMANDS.MSP_ALTITUDE)
         if (data):
             return self.toInt32(data[0:4])
@@ -356,6 +367,7 @@ class Pluto(object):
             return None
 
     def getVariometer(self):
+        '''Returns estimated vertical velocity. Units: cm/s'''
         data = self.getData(self.MSPCOMMANDS.MSP_ALTITUDE)
         if (data):
             return self.toInt16(data[4:6])
@@ -363,6 +375,7 @@ class Pluto(object):
             return None
 
     def getAcc(self):
+        '''Returns RAW data from accelerometer [X-axis, Y-axis, Z-axis]'''
         data = self.getData(self.MSPCOMMANDS.MSP_RAW_IMU)
         if (data):
             return [self.toInt16(data[0:2]), self.toInt16(data[2:4]), self.toInt16(data[4:6])]
@@ -370,6 +383,7 @@ class Pluto(object):
             return None
 
     def getGyro(self):
+        '''Returns RAW data from gyroscope [X-axis, Y-axis, Z-axis]'''
         data = self.getData(self.MSPCOMMANDS.MSP_RAW_IMU)
         if (data):
             return [self.toInt16(data[6:8]), self.toInt16(data[8:10]), self.toInt16(data[10:12])]
@@ -377,6 +391,7 @@ class Pluto(object):
             return None
 
     def getMag(self):
+        '''Returns RAW data from magnetometer [X-axis, Y-axis, Z-axis]'''
         data = self.getData(self.MSPCOMMANDS.MSP_RAW_IMU)
         if (data):
             return [self.toInt16(data[12:14]), self.toInt16(data[14:16]), self.toInt16(data[16:18])]
@@ -384,6 +399,7 @@ class Pluto(object):
             return None
 
     def getRoll(self):
+        '''Returns Roll. Units : Decidegrees'''
         data = self.getData(self.MSPCOMMANDS.MSP_ATTITUDE)
         if (data):
             return self.toInt16(data[0:2])
@@ -391,6 +407,7 @@ class Pluto(object):
             return None
 
     def getPitch(self):
+        '''Returns pitch. Units : Decidegrees'''
         data = self.getData(self.MSPCOMMANDS.MSP_ATTITUDE)
         if (data):
             return self.toInt16(data[2:4])
@@ -398,6 +415,7 @@ class Pluto(object):
             return None
 
     def getYaw(self):
+        '''Returns Yaw. Units : Decidegrees'''
         data = self.getData(self.MSPCOMMANDS.MSP_ATTITUDE)
         if (data):
             return self.toInt16(data[4:6])

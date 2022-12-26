@@ -16,7 +16,7 @@ pluto.connect()
 # pluto.DISARM()
 
 
-# pluto.TakeOff()
+pluto.TakeOff()
 
 print(f'Altitiude: {pluto.getAltitude()}')
 print(f'VarioMeter: {pluto.getVariometer()}')
