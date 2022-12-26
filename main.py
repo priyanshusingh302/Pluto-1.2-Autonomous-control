@@ -27,5 +27,6 @@ print(f'Roll: {pluto.getRoll()}')
 print(f'Pitch: {pluto.getPitch()}')
 print(f'Yaw: {pluto.getYaw()}')
 # print(pluto.getVariometer())
-
+# pluto.disconnect()
 pluto.temp_disconnect()
+

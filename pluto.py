@@ -25,18 +25,6 @@ class Pluto(object):
         if self.monitorThread.is_alive():
             self.exitNow.set()
 
-    def waitForResponse(self, command):
-        if ((command) in self.responses):
-            startTime = time()
-            while True:
-                if self.responses[command].finished:
-                    return self.responses[command].data
-                if (time() - startTime > self.responseTimeout):
-                    return False
-                sleep(0)
-        else:
-            return False
-
     def setHostPort(self, host, port):
         self.HOST = host
         self.PORT = port
@@ -44,7 +32,7 @@ class Pluto(object):
     def connect(self):
         try:
             self.MSP.open(self.HOST, self.PORT, 2)
-            self.soc=self.MSP.get_socket()
+            self.soc = self.MSP.get_socket()
             self.monitorThread.start()
 
         except timeout as e:
@@ -59,22 +47,23 @@ class Pluto(object):
     def sendData(self, data):
         try:
             self.MSP.write(data)
-
+        except AttributeError as e:
+            print("[ERROR]:", end=' ')
+            print(e)
+            return False
         except OSError as e:
             print("[ERROR]:", end=' ')
             print(e)
             return False
+
         return True
 
     class MSPResponse:
-        """Combine MSP response data and finished communication flag"""
-
         def __init__(self):
             self.finished = False
             self.data = []
 
     class MSPSTATES:
-        """Enum of MSP States"""
         IDLE = 0
         HEADER_START = 1
         HEADER_M = 2
@@ -146,6 +135,18 @@ class Pluto(object):
     def fromUInt32(self, value):
         return struct.unpack("<BBBB", struct.pack("@I", value))
 
+    def waitForResponse(self, command):
+        if ((command) in self.responses):
+            startTime = time()
+            while True:
+                if self.responses[command].finished:
+                    return self.responses[command].data
+                if (time() - startTime > self.responseTimeout):
+                    return False
+                sleep(0)
+        else:
+            return False
+
     def encodePacket(self, command, data=None):
         if (data is None):
             dataSize = 0
@@ -214,7 +215,7 @@ class Pluto(object):
                     data.append(inByte)
                     dataChecksum = (dataChecksum ^ inByte)
                 elif (state == self.MSPSTATES.HEADER_CMD) and (len(data) >= dataSize):
-                    if (dataChecksum == inByte):            #If checksum matches
+                    if (dataChecksum == inByte):  # If checksum matches
                         self.responses[command].finished = True
                         self.responses[command].data = data
                     else:
@@ -283,6 +284,7 @@ class Pluto(object):
             return False
 
     def temp_disconnect(self):
+        # For testing and disconnecting from virtual server
         data = bytearray()
         data.append(ord('!'))
         data.append(ord('D'))
@@ -309,6 +311,24 @@ class Pluto(object):
 
     def DISARM(self):
         self.setRC({"aux4": 1000})
+
+    def AltitudeHold_ON(self):
+        self.setRC({"aux3": 1500})
+
+    def AltitudeHold_OFF(self):
+        self.setRC({"aux3": 1000})
+
+    def DevMode_ON(self):
+        self.setRC({"aux2": 1500})
+
+    def DevMode_OFF(self):
+        self.setRC({"aux2": 1000})
+
+    def HeadFree_ON(self):
+        self.setRC({"aux1": 1500})
+
+    def HeadFree_OFF(self):
+        self.setRC({"aux1": 1000})
 
     def TakeOff(self):
         self.setCommand(1)
@@ -344,42 +364,42 @@ class Pluto(object):
 
     def getAcc(self):
         data = self.getData(self.MSPCOMMANDS.MSP_RAW_IMU)
-        if(data):
-            return [self.toInt16(data[0:2]),self.toInt16(data[2:4]),self.toInt16(data[4:6])]
+        if (data):
+            return [self.toInt16(data[0:2]), self.toInt16(data[2:4]), self.toInt16(data[4:6])]
         else:
             return None
 
     def getGyro(self):
         data = self.getData(self.MSPCOMMANDS.MSP_RAW_IMU)
-        if(data):
-            return [self.toInt16(data[6:8]),self.toInt16(data[8:10]),self.toInt16(data[10:12])]
+        if (data):
+            return [self.toInt16(data[6:8]), self.toInt16(data[8:10]), self.toInt16(data[10:12])]
         else:
             return None
 
     def getMag(self):
         data = self.getData(self.MSPCOMMANDS.MSP_RAW_IMU)
-        if(data):
-            return [self.toInt16(data[12:14]),self.toInt16(data[14:16]),self.toInt16(data[16:18])]
+        if (data):
+            return [self.toInt16(data[12:14]), self.toInt16(data[14:16]), self.toInt16(data[16:18])]
         else:
             return None
 
     def getRoll(self):
         data = self.getData(self.MSPCOMMANDS.MSP_ATTITUDE)
-        if(data):
+        if (data):
             return self.toInt16(data[0:2])
         else:
             return None
-    
+
     def getPitch(self):
         data = self.getData(self.MSPCOMMANDS.MSP_ATTITUDE)
-        if(data):
+        if (data):
             return self.toInt16(data[2:4])
         else:
             return None
-            
+
     def getYaw(self):
         data = self.getData(self.MSPCOMMANDS.MSP_ATTITUDE)
-        if(data):
+        if (data):
             return self.toInt16(data[4:6])
         else:
             return None
