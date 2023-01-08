@@ -65,8 +65,8 @@ pluto.connect()
 # # pluto.disconnect()
 # pluto.disconnect()
 
-HIGH = 1600
-LOW = 1400
+HIGH = 2100
+LOW = 900
 Neutral = 1500
 
 if __name__=="__main__":
@@ -76,10 +76,11 @@ if __name__=="__main__":
 
     while True:
 
+        pluto.ARM()
         key = getKey()
         if len(key) > 0:
             if key == "m":
-                pluto.ARM()
+                pass
             elif key == "n":
                 pluto.DISARM()
 
@@ -87,31 +88,43 @@ if __name__=="__main__":
                 pluto.setPitch(HIGH)
             elif key == "s":
                 pluto.setPitch(LOW)
-            elif key == "S" or key == "W":
-                pluto.setPitch(Neutral)
+            
 
             elif key == "d":
                 pluto.setRoll(HIGH)
             elif key == "a":
                 pluto.setRoll(LOW)
-            elif key == "D" or key == "A":
-                pluto.setRoll(Neutral)
-
-            elif key == "q":
-                pluto.setYaw(HIGH)
-            elif key == "e":
-                pluto.setYaw(LOW)
-            elif key == "Q" or key == "E":
-                pluto.setYaw(Neutral)
             
+
+            elif key == "4":
+                pluto.setYaw(HIGH)
+            elif key == "6":
+                pluto.setYaw(LOW)
+            
+            elif key=="8":
+                pluto.setThrottle(HIGH)
+            elif key=="2":
+                pluto.setThrottle(LOW)
+
             elif key == "c":
                 pluto.Land()
 
             elif key == "x":
                 pluto.TakeOff()
 
+            elif key=="y":
+                pluto.AltitudeHold_OFF()
+            elif key=="u":
+                pluto.AltitudeHold_ON()
+
             elif key == "b":
-                pluto.disconnect()
                 break
+            print(key)
+                
+        # else:
+        #     pluto.setPitch(Neutral)
+        #     pluto.setRoll(Neutral)
+        #     pluto.setThrottle(Neutral)
+        #     pluto.setYaw(Neutral)
 
-
+    pluto.disconnect()
