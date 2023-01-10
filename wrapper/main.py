@@ -53,7 +53,7 @@ pluto.connect()
 
 # pluto.TakeOff()
 
-# print(f'Altitiude: {pluto.getAltitude()}')
+print(f'Altitiude: {pluto.getAltitude()}')
 # print(f'VarioMeter: {pluto.getVariometer()}')
 # print(f'Acc: {pluto.getAcc()}')
 # print(f'Gyro: {pluto.getGyro()}')
@@ -65,22 +65,24 @@ pluto.connect()
 # # pluto.disconnect()
 # pluto.disconnect()
 
-HIGH = 2100
-LOW = 900
+HIGH = 1700
+LOW = 1300
 Neutral = 1500
 
+throt=900
 if __name__=="__main__":
     if os.name != 'nt':
         settings = termios.tcgetattr(sys.stdin)
 
 
     while True:
-
-        pluto.ARM()
+        # print(f'Roll:{pluto.getRoll()}   Pitch:{pluto.getPitch()}   Yaw:{pluto.getYaw()}')
         key = getKey()
         if len(key) > 0:
+            print(key)
+
             if key == "m":
-                pass
+                pluto.ARM()
             elif key == "n":
                 pluto.DISARM()
 
@@ -89,13 +91,11 @@ if __name__=="__main__":
             elif key == "s":
                 pluto.setPitch(LOW)
             
-
             elif key == "d":
                 pluto.setRoll(HIGH)
             elif key == "a":
                 pluto.setRoll(LOW)
             
-
             elif key == "4":
                 pluto.setYaw(HIGH)
             elif key == "6":
@@ -108,7 +108,6 @@ if __name__=="__main__":
 
             elif key == "c":
                 pluto.Land()
-
             elif key == "x":
                 pluto.TakeOff()
 
@@ -117,14 +116,23 @@ if __name__=="__main__":
             elif key=="u":
                 pluto.AltitudeHold_ON()
 
+            elif key=="p":
+                pluto.HeadFree_OFF()
+            elif key=="o":
+                pluto.HeadFree_ON()
+
+            elif key=="h":
+                for i in range(100):
+                    pluto.setYaw(HIGH)
+
             elif key == "b":
                 break
-            print(key)
-                
-        # else:
-        #     pluto.setPitch(Neutral)
-        #     pluto.setRoll(Neutral)
-        #     pluto.setThrottle(Neutral)
-        #     pluto.setYaw(Neutral)
+
+            else:
+                pluto.setRC({"roll":Neutral,"pitch":Neutral,"yaw":Neutral,"throttle":Neutral})
+
+            
+        else:
+            pluto.setRC({"roll":Neutral,"pitch":Neutral,"yaw":Neutral,"throttle":Neutral})
 
     pluto.disconnect()

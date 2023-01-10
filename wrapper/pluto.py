@@ -247,10 +247,10 @@ class Pluto(object):
             r = self.fromUInt16(pitch)
             data.append(r[0])
             data.append(r[1])
-            r = self.fromUInt16(yaw)
+            r = self.fromUInt16(throttle)
             data.append(r[0])
             data.append(r[1])
-            r = self.fromUInt16(throttle)
+            r = self.fromUInt16(yaw)
             data.append(r[0])
             data.append(r[1])
             for i in range(0, 4):
