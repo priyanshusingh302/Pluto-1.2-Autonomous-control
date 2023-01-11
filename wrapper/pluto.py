@@ -3,6 +3,7 @@ from threading import Thread, Event
 from time import sleep, time
 import telnetlib
 import struct
+import sys
 
 
 class Pluto(object):
@@ -36,7 +37,8 @@ class Pluto(object):
             self.monitorThread.start()
         except timeout as e:
             print("[ERROR]:", end=' ')
-            print(e)
+            print(f'{e} \n[EXITING]')
+            sys.exit()
 
     def disconnect(self):
         if self.monitorThread.is_alive():
@@ -421,3 +423,8 @@ class Pluto(object):
             return self.toInt16(data[4:6])
         else:
             return None
+
+    def ping(self):
+        tim=time()
+        x = self.getAltitude()
+        print(f'PING:{round((time()-tim)*1000.0, 2)} ms')

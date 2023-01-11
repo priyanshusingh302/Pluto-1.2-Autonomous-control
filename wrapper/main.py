@@ -38,7 +38,7 @@ def getKey():
 
 pluto = Pluto()
 
-# # pluto.setHostPort("127.0.1.1",23)
+# pluto.setHostPort("192.168.10.7",23)
 
 pluto.connect()
 
@@ -53,7 +53,7 @@ pluto.connect()
 
 # pluto.TakeOff()
 
-print(f'Altitiude: {pluto.getAltitude()}')
+# print(f'Altitiude: {pluto.getAltitude()}')
 # print(f'VarioMeter: {pluto.getVariometer()}')
 # print(f'Acc: {pluto.getAcc()}')
 # print(f'Gyro: {pluto.getGyro()}')
@@ -68,8 +68,9 @@ print(f'Altitiude: {pluto.getAltitude()}')
 HIGH = 1700
 LOW = 1300
 Neutral = 1500
-
 throt=900
+pluto.ping()
+
 if __name__=="__main__":
     if os.name != 'nt':
         settings = termios.tcgetattr(sys.stdin)
@@ -78,6 +79,11 @@ if __name__=="__main__":
     while True:
         # print(f'Roll:{pluto.getRoll()}   Pitch:{pluto.getPitch()}   Yaw:{pluto.getYaw()}')
         key = getKey()
+        # pluto.ping()
+        roll=Neutral
+        pitch=Neutral
+        yaw=Neutral
+        throttle=Neutral
         if len(key) > 0:
             print(key)
 
@@ -87,24 +93,24 @@ if __name__=="__main__":
                 pluto.DISARM()
 
             elif key == "w":
-                pluto.setPitch(HIGH)
+                pitch=HIGH
             elif key == "s":
-                pluto.setPitch(LOW)
+                pitch=LOW
             
             elif key == "d":
-                pluto.setRoll(HIGH)
+                roll=HIGH
             elif key == "a":
-                pluto.setRoll(LOW)
+                roll=LOW
             
             elif key == "4":
-                pluto.setYaw(HIGH)
+                yaw=LOW
             elif key == "6":
-                pluto.setYaw(LOW)
+                yaw=HIGH
             
             elif key=="8":
-                pluto.setThrottle(HIGH)
+                throttle=HIGH
             elif key=="2":
-                pluto.setThrottle(LOW)
+                throttle=LOW
 
             elif key == "c":
                 pluto.Land()
@@ -121,18 +127,14 @@ if __name__=="__main__":
             elif key=="o":
                 pluto.HeadFree_ON()
 
-            elif key=="h":
-                for i in range(100):
-                    pluto.setYaw(HIGH)
-
             elif key == "b":
+                print("[DISCONNECTED]")
                 break
 
             else:
                 pluto.setRC({"roll":Neutral,"pitch":Neutral,"yaw":Neutral,"throttle":Neutral})
-
-            
-        else:
-            pluto.setRC({"roll":Neutral,"pitch":Neutral,"yaw":Neutral,"throttle":Neutral})
+                continue
+    
+        pluto.setRC({"roll":roll,"pitch":pitch,"yaw":yaw,"throttle":throttle})
 
     pluto.disconnect()
