@@ -78,6 +78,8 @@ if __name__=="__main__":
 
     while True:
         # print(f'Roll:{pluto.getRoll()}   Pitch:{pluto.getPitch()}   Yaw:{pluto.getYaw()}')
+        # print(f'Height:{pluto.getAltitude()}')
+        # print(f'acc: {pluto.getAcc()}')
         key = getKey()
         # pluto.ping()
         roll=Neutral
