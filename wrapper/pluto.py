@@ -428,3 +428,6 @@ class Pluto(object):
         tim=time()
         x = self.getAltitude()
         print(f'PING:{round((time()-tim)*1000.0, 2)} ms')
+
+if '__name__' == '__main__':
+    Pluto()        

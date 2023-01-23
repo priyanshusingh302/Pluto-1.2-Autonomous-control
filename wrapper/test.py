@@ -11,7 +11,7 @@ if os.name == 'nt':
 else:
     import tty
     import termios
-from ..wrapper.pluto import Pluto
+from pluto import Pluto
 
 
 class MyDrone():
@@ -19,7 +19,7 @@ class MyDrone():
     def __init__(self, camera_ID=0):
 
         #  [roll, pitch, yaw, throttle]
-        self.Kp = np.array([0.1, 0.1, 0, 0])
+        self.Kp = np.array([1, 1, 0, 0])
         self.Kd = np.array([0, 0, 0, 0])
         self.Ki = np.array([0, 0, 0, 0])
         self.error = np.array([0, 0, 0, 0])
@@ -30,8 +30,8 @@ class MyDrone():
         self.measured_position_and_yaw = np.array([0, 0, 0, 0])
         self.estimated_position_and_yaw = np.array([0, 0, 0, 0])
         self.NEUTRAL = 1500
-        self.HIGH = 2000
-        self.LOW = 1000
+        self.HIGH = 1700
+        self.LOW = 1300
         self.delta_time = 10e-03  # 10 ms
         self.initial_time = 0
         self.now = 0
@@ -55,7 +55,7 @@ class MyDrone():
 
         self.capture = cv2.VideoCapture(
             camera_ID, cv2.CAP_DSHOW)  # this is the magic!
-        self.capture.set(cv2.CAP_PROP_SETTINGS, 0)
+        # self.capture.set(cv2.CAP_PROP_SETTINGS, 0)
         self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution[0])
         self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution[1])
         self.capture.set(cv2.CAP_PROP_FPS, 60)
@@ -135,7 +135,7 @@ class MyDrone():
             # newcameramtx, roi = cv2.getOptimalNewCameraMatrix(self.camera_matrix, self.distortion_coefficients, (self.resolution[0],self.resolution[1]), 1, (self.resolution[0],self.resolution[1]))
             # frame = cv2.undistort(frame, self.camera_matrix, self.distortion_coefficients, None, newcameramtx)
             cv2.circle(
-                frame, (self.resolution[1]//2, self.resolution[0]//2), 5, (0, 255, 0), -1)
+                frame, (frame.shape[1]//2,frame.shape[0]//2), 5, (0, 255, 0), -1)
             cv2.imshow("image", frame)
         else:
             print("error in openning camera")
@@ -168,8 +168,8 @@ class MyDrone():
 
     def Send_Input(self):
 
-        self.pluto.setRC({"roll":self.Input[0],"pitch":self.Input[1],"yaw":self.Input[2],"throttle":self.Input[3]})
-        pass
+        self.pluto.setRC({"roll":int(self.Input[0]),"pitch":int(self.Input[1]),"yaw":int(self.Input[2]),"throttle":int(self.Input[3])})
+        print(self.Input)
 
 
 if __name__ == "__main__":
@@ -206,3 +206,6 @@ if __name__ == "__main__":
         elif key == ord("b"):
             print("[DISCONNECTED]")
             break
+
+obj.__del__()
+print("OUT OF LOOP")
