@@ -19,20 +19,20 @@ class MyDrone():
     def __init__(self, camera_ID=0):
 
         #  [roll, pitch, yaw, throttle]
-        self.Kp = np.array([1, 1, 0, 0])
-        self.Kd = np.array([0, 0, 0, 0])
-        self.Ki = np.array([0, 0, 0, 0])
+        self.Kp = np.array([10, -10, 0, -20])
+        self.Kd = np.array([50, -50, 0, -1])
+        self.Ki = np.array([20, -20, 0, -5])
         self.error = np.array([0, 0, 0, 0])
         self.prev_error = np.array([0, 0, 0, 0])
         self.error_sum = np.array([0, 0, 0, 0])
-        self.setpoint = np.array([0, 0, 0, 0])
+        self.setpoint = np.array([0, 0, 0, 300])
         self.Input = np.array([0, 0, 0, 0])
         self.measured_position_and_yaw = np.array([0, 0, 0, 0])
         self.estimated_position_and_yaw = np.array([0, 0, 0, 0])
         self.NEUTRAL = 1500
-        self.HIGH = 1700
-        self.LOW = 1300
-        self.delta_time = 10e-03  # 10 ms
+        self.HIGH = 1600
+        self.LOW = 1400
+        self.delta_time = 5e-02  # 50 msq
         self.initial_time = 0
         self.now = 0
 
@@ -42,6 +42,7 @@ class MyDrone():
                                        [0.00000000e+00, 0.00000000e+00, 1.00000000e+00]])
         self.distortion_coefficients = np.array(
             [[-0.53835254, 0.74990547, -0.00897318, 0.00293929, -0.59153803]])
+
         self.marker_size = 5.9
         self.marker_type = cv2.aruco.DICT_4X4_50
         self.resolution = (1080, 1920)
@@ -126,16 +127,21 @@ class MyDrone():
                             50, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (255, 0, 0), 2)
                         # print(TransionalVector[index][0][0],TransionalVector[index][0][1])
                         self.measured_position_and_yaw = np.array(
-                            [TransionalVector[index][0][0], TransionalVector[index][0][1], TransionalVector[index][0][2], self.CalculateYaw(TransionalVector)])
+                            [TransionalVector[index][0][0], TransionalVector[index][0][1], self.CalculateYaw(TransionalVector), TransionalVector[index][0][2]])
                 elif isinstance(iD, list):
                     pass
                 else:
                     print("Wrong value for iD")
                     exit(0)
-            # newcameramtx, roi = cv2.getOptimalNewCameraMatrix(self.camera_matrix, self.distortion_coefficients, (self.resolution[0],self.resolution[1]), 1, (self.resolution[0],self.resolution[1]))
-            # frame = cv2.undistort(frame, self.camera_matrix, self.distortion_coefficients, None, newcameramtx)
+            # frame = cv2.undistort(frame, self.camera_matrix, self.distortion_coefficients, None, self.newcameramtx)
+            # frame = frame[self.roi[1]:self.roi[3], self.roi[0]:self.roi[2]]
+            h, w = frame.shape[:2]
             cv2.circle(
-                frame, (frame.shape[1]//2,frame.shape[0]//2), 5, (0, 255, 0), -1)
+                frame, (w//2,h//2), 10, (0, 255, 0), 2)
+            cv2.circle(
+                frame, (w//2,h//2), 5, (0, 0, 255), -1)
+            cv2.line(frame, (w//2 - int(0.05*w), h//2), (w//2 + int(0.05*w), h//2), (0, 255, 0), 2)
+            cv2.line(frame, (w//2, h//2 - int(0.05*h)), (w//2, h//2 + int(0.05*h)), (0, 255, 0), 2)
             cv2.imshow("image", frame)
         else:
             print("error in openning camera")
@@ -155,6 +161,7 @@ class MyDrone():
                 (self.error - self.prev_error)/self.delta_time + \
                 self.Ki*self.error_sum*self.delta_time
             self.prev_error = self.error
+            self.error_sum = self.error_sum + self.error_sum
             self.initial_time = self.now
 
             self.Input[0] = int(
@@ -175,7 +182,6 @@ class MyDrone():
 if __name__ == "__main__":
 
     obj = MyDrone(camera_ID=1)
-
     while True:
         obj.Camera_Measurement()
         obj.StateEstimator()
@@ -209,3 +215,4 @@ if __name__ == "__main__":
 
 obj.__del__()
 print("OUT OF LOOP")
+
