@@ -37,7 +37,6 @@ class Delay():
                 return True
         else: # if it has previously delayed a program execution
             return True # no need to delay anymore on later subsequent function calls
-#####################################################
 
 class MyDrone():
 
