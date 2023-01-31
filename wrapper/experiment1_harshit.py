@@ -296,7 +296,9 @@ class MyDrone():
         #     f.close()
 
     def Set_Multiple_Targets(self, targets):
-
+        '''
+        Set the provided target points as the waypoints/set points for the drone path.
+        '''
         if isinstance(targets, list):
             self.target_points = targets
         else:
