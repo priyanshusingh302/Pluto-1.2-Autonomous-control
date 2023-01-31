@@ -16,20 +16,26 @@ class Pluto(object):
     MSP = telnetlib.Telnet()
     soc = None
 
+    #Creating a separate thread to monitor the packets that are being recieved from the pluto drone ...............
     def __init__(self):
         self.monitorThread = Thread(target=self.monitorSerialPort)
         self.exitNow = Event()
         self.responses = {}
         self.responseTimeout = 3
+    #..............................................................................................................
 
+    #Destructor to close the monitor thread when we want to stop the communication...................................
     def __del__(self):
         if self.monitorThread.is_alive():
             self.exitNow.set()
+    #.............................................................................................................
 
+    #It can be used to change the host and port
     def setHostPort(self, host, port):
         self.HOST = host
         self.PORT = port
 
+    #Function to connect the Pluto drone with laptop and at the same time start the monitor thread to recieve the packets sent by pluto drone 
     def connect(self):
         try:
             self.MSP.open(self.HOST, self.PORT, 2)
@@ -39,11 +45,15 @@ class Pluto(object):
             print("[ERROR]:", end=' ')
             print(f'{e} \n[EXITING]')
             sys.exit()
-
+    #............................................................................................................
+    
+    #To disconnect the drone.....................................................................................
     def disconnect(self):
         if self.monitorThread.is_alive():
             self.exitNow.set()
         self.MSP.close()
+    #............................................................................................................
+
 
     class MSPResponse:
         def __init__(self):
@@ -86,11 +96,13 @@ class Pluto(object):
         MSP_SET_HEAD = 211
         MSP_SET_COMMAND = 217
 
+    #To convert the binary data into 
     def toInt16(self, data):
         if (len(data) == 2):
             return struct.unpack("@h", struct.pack("<BB", data[0], data[1]))[0]
         else:
             return None
+
 
     def toUInt16(self, data):
         if (len(data) == 2):
@@ -170,6 +182,7 @@ class Pluto(object):
                 sleep(0)
         self.disconnect()
 
+
     def sendData(self, data):
         try:
             self.MSP.write(data)
@@ -183,6 +196,7 @@ class Pluto(object):
             return False
         return True
 
+
     def waitForResponse(self, command):
         if ((command) in self.responses):
             startTime = time()
@@ -194,7 +208,10 @@ class Pluto(object):
                 sleep(0)
         else:
             return False
+    #............................................................................................
 
+
+    #This function takes the data to be sent to the drone and convert it into the required format
     def encodePacket(self, command, data=None):
         if (data is None):
             dataSize = 0
@@ -219,6 +236,8 @@ class Pluto(object):
         packet.append(checksum)
         self.responses.update({command: self.MSPResponse()})
         return self.sendData(packet)
+    #.............................................................................................
+
 
     def getData(self, command):
         self.encodePacket(command)
@@ -263,6 +282,7 @@ class Pluto(object):
         else:
             return False
 
+    
     def setCommand(self, value):
         data = bytearray()
         com = 0
@@ -277,6 +297,7 @@ class Pluto(object):
         else:
             return False
 
+    
     def temp_disconnect(self):
         '''For testing and disconnecting from virtual server'''
         data = bytearray()
@@ -424,10 +445,12 @@ class Pluto(object):
         else:
             return None
 
+
     def ping(self):
         tim=time()
         x = self.getAltitude()
         print(f'PING:{round((time()-tim)*1000.0, 2)} ms')
+
 
 if '__name__' == '__main__':
     Pluto()        
