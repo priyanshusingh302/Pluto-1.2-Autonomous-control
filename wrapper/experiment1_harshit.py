@@ -303,14 +303,18 @@ class MyDrone():
             print("ERROR: targets should be a list")
 
     def Change_Target(self):
-
+        '''
+        If the current setpoint is reached, set the new point from the path as the new setpoint.
+        '''
         if hasattr(self, "target_points"):
             if len(self.target_points) > 0 and self.Change_setpoint():
                 self.setpoint = np.array(self.target_points[0])
                 self.target_points.pop(0)
 
     def Change_setpoint(self):
-
+        '''
+        This function checks if the drone has reached the destined setpoint. If so, it returns true, else False
+        '''
         if max(abs(self.setpoint - self.estimated_position_and_yaw)[:2]) <= self.x_y_error_tolerance and max(abs(self.derr[:2])) <= self.x_y_derr_tolerance:
             return True
         else:
