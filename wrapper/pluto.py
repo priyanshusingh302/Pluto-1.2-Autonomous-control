@@ -96,7 +96,7 @@ class Pluto(object):
         MSP_SET_HEAD = 211
         MSP_SET_COMMAND = 217
 
-    #To convert the binary data into 
+    #To convert data
     def toInt16(self, data):
         if (len(data) == 2):
             return struct.unpack("@h", struct.pack("<BB", data[0], data[1]))[0]
@@ -135,6 +135,7 @@ class Pluto(object):
         return struct.unpack("<BBBB", struct.pack("@I", value))
 
     def monitorSerialPort(self):
+        '''function to Listen to incomming data from pluto'''
         print("[LISTENING]")
         state = self.MSPSTATES.IDLE
         data = bytearray()
@@ -182,8 +183,8 @@ class Pluto(object):
                 sleep(0)
         self.disconnect()
 
-
     def sendData(self, data):
+        '''function to send a packet using Telnet'''
         try:
             self.MSP.write(data)
         except AttributeError as e:
@@ -196,8 +197,8 @@ class Pluto(object):
             return False
         return True
 
-
     def waitForResponse(self, command):
+        '''this function waits until the requested data is recieved and then return the data'''
         if ((command) in self.responses):
             startTime = time()
             while True:
@@ -211,7 +212,7 @@ class Pluto(object):
     #............................................................................................
 
 
-    #This function takes the data to be sent to the drone and convert it into the required format
+    # This function takes the data to be sent to the drone and convert it into the format of a MSP packet #
     def encodePacket(self, command, data=None):
         if (data is None):
             dataSize = 0
@@ -238,12 +239,27 @@ class Pluto(object):
         return self.sendData(packet)
     #.............................................................................................
 
-
+    #this function encapsulates sending the get command and returning the data when it is recieved
     def getData(self, command):
         self.encodePacket(command)
         return self.waitForResponse(command)
 
+    #Sends the RC values to drone
     def setRC(self, values):
+        '''
+            Sends RC values to drone
+            Format: Dictionary with following key and value pair
+            {
+                "roll":Value,
+                "pitch":Value,
+                "yaw":Value,
+                "throttle":Value,
+                "aux1":Value,
+                "aux2":Value,
+                "aux3":Value,
+                "aux4":Value,
+            }
+        '''
         data = bytearray()
         throttle = 0
         pitch = 0
@@ -284,6 +300,15 @@ class Pluto(object):
 
     
     def setCommand(self, value):
+        '''
+            sends diffrent commands to drone to do certain action
+            1 : Take-off
+            2 : Land
+            3 : Back Flip
+            4 : Front Flip
+            5 : Right Flip
+            6 : Left Flip
+        '''
         data = bytearray()
         com = 0
         if isinstance(value, int):
@@ -297,17 +322,6 @@ class Pluto(object):
         else:
             return False
 
-    
-    def temp_disconnect(self):
-        '''For testing and disconnecting from virtual server'''
-        data = bytearray()
-        data.append(ord('!'))
-        data.append(ord('D'))
-        data.append(ord('I'))
-        data.append(ord('S'))
-        self.encodePacket(0, data)
-        if self.monitorThread.is_alive():
-            self.exitNow.set()
 
     def setThrottle(self, value):
         '''SET Throttle value  UNIT:PWM   RANGE:900-2100'''
@@ -447,6 +461,7 @@ class Pluto(object):
 
 
     def ping(self):
+        '''Returns the round trip time of sending a command and receiving it.  Unit : ms'''
         tim=time()
         x = self.getAltitude()
         print(f'PING:{round((time()-tim)*1000.0, 2)} ms')
