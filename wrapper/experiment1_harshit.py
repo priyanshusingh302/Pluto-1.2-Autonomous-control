@@ -181,10 +181,16 @@ class MyDrone():
             exit(0)
 
     def Transform_coordinates(self, x, y, theta):
+        '''
+        Converting the extracted camera/World coordinates to the coordinates with respect to drone
 
-        X = (x*cos(theta)) - (y*sin(theta))
-        Y = (x*sin(theta)) + (y*cos(theta))
-        return X, Y
+        The image is perceived by the camera and the coordinates extracted using image processing will be with respect to the camera,
+        but to command the drone , coordinates are required to be converteed to the coordinates with respect to drone. Here the 
+        coordinates are rotated to see the axises as seen by drone and not by the camera.
+        '''
+        X = (x*cos(theta)) - (y*sin(theta))         # Using the rotation matrix to find the transformed coordinates,
+        Y = (x*sin(theta)) + (y*cos(theta))         # i.e [X][T] = [X'], X'= Transformed coordinates, X- Original Coordinates, T-rotation matrix 
+        return X, Y                                 
 
     def StateEstimator(self):
 
