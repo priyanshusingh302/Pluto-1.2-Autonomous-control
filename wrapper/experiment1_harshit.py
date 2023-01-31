@@ -1,10 +1,12 @@
 #! python3
 
+#### importing required libraries ####
 import cv2
 import numpy as np
 import time
 from math import atan, cos, sin
 from pluto import Pluto
+######################################
 
 
 drone_height = 350 # distance from camera
@@ -40,142 +42,149 @@ class Delay():
 
 class MyDrone():
 
-    def __init__(self, camera_ID=0, Aruco_ID=0):
+    def __init__(self, camera_ID=0, camera_resolution=(1080, 1920), Aruco_ID=0, marker_type="DICT_4X4_50"):
 
         # order of convention [roll, pitch, yaw, throttle]
         self.Kp = np.array([3.16227766e+00, -3.16227766e+00, -10, -10]) # Proportional gain
         self.Kd = np.array([5.81569390e+00, -7.81569390e+00, 0, -1])  # Derivative gain
         self.Ki = np.array([0, 0, 0, 0]) # Integral gain
 
-        self.error = np.array([0, 0, 0, 0]) # Error about each axis (setpoint - actual position)
-        self.prev_error = np.array([0, 0, 0, 0]) # previous error about each axis
-        self.derr = np.array([0, 0, 0, 0]) # derivative of change of error about each axis
-        self.error_sum = np.array([0, 0, 0, 0])
+        self.error = np.array([0, 0, 0, 0]) # Error about roll, pitch, yaw and throttle (setpoint - actual position)
+        self.prev_error = np.array([0, 0, 0, 0]) # previous error about roll, pitch, yaw and throttle
+        self.derr = np.array([0, 0, 0, 0]) # derivative of change of error about roll, pitch, yaw and throttle
+        self.error_sum = np.array([0, 0, 0, 0]) # sum of errors about roll, pitch, yaw and throttle
 
-        self.P_output = np.array([0, 0, 0, 0]) 
-        self.D_output = np.array([0, 0, 0, 0])
-        self.I_output = np.array([0, 0, 0, 0])
+        self.P_output = np.array([0, 0, 0, 0]) # it will store Proportional output of each axis
+        self.D_output = np.array([0, 0, 0, 0]) # it will store Derivative output of each axis
+        self.I_output = np.array([0, 0, 0, 0]) # it will store Integral output of each axis
 
-        self.setpoint = np.array([0, 0, 0, drone_height])
-        self.result = np.array([0, 0, 0, 0])
-        self.Input = np.array([0, 0, 0, 0])
+        self.result = np.array([0, 0, 0, 0]) # to store the PID output of roll, pitch, yaw and throttle
+        self.Input = np.array([0, 0, 0, 0]) # it will store the value that will be ultimately send to the drone
 
-        self.x_y_error_tolerance = 10
-        self.x_y_derr_tolerance = 500
+        self.setpoint = np.array([0, 0, 0, drone_height]) # initial setpoint
 
-        self.NEUTRAL = np.array([1500, 1500, 1500, 1500])
-        self.HIGH = np.array([1550, 1550, 1600, 1600])
-        self.LOW = np.array([1450, 1450, 1400, 1400])
+        self.x_y_error_tolerance = 10 # +- tolerance value of error for x and y directions
+        self.x_y_derr_tolerance = 500 # +- tolerance value of derr for x and y directions
 
-        self.Yaw = 0
+        self.NEUTRAL = np.array([1500, 1500, 1500, 1500]) # Neutral value for roll, pitch, yaw and throttle
+        self.HIGH = np.array([1550, 1550, 1600, 1600]) # upperbound value for roll, pitch, yaw and throttle
+        self.LOW = np.array([1450, 1450, 1400, 1400]) # lowerbound value for roll, pitch, yaw and throttle
 
-        self.measured_position_and_yaw = np.array([0, 0, 0, 0])
-        self.estimated_position_and_yaw = np.array([0, 0, 0, 0])
+        self.Yaw = 0 # initial yaw
 
-        self.delta_time = 1e-02  # 10 ms
-        self.elapsed_time = self.delta_time
+        self.measured_position_and_yaw = np.array([0, 0, 0, 0]) # it will store the measured x, y, z position and yaw of drone
+        self.estimated_position_and_yaw = np.array([0, 0, 0, 0]) # it will store the estimated x, y, z position and yaw of drone
 
-        self.camera_matrix = np.array([[2.36854310e+03, 0.00000000e+00, 8.83847869e+02],
-                                       [0.00000000e+00, 2.36416743e+03,
-                                           6.26598972e+02],
-                                       [0.00000000e+00, 0.00000000e+00, 1.00000000e+00]])
-        self.distortion_coefficients = np.array(
-            [[-0.53835254, 0.74990547, -0.00897318, 0.00293929, -0.59153803]])
+        self.delta_time = 1e-02  # 10 ms, the time interval of running pid
+        self.elapsed_time = self.delta_time # this time will be used to calculate derivative of error
 
-        self.marker_size = 5.9
-        self.aruco_id = Aruco_ID
-        self.marker_type = cv2.aruco.DICT_4X4_50
-        self.resolution = (1080, 1920)
+        ############################# it is for camera calliberation ########################################
+        self.camera_matrix = np.array([[2.36854310e+03, 0.00000000e+00, 8.83847869e+02],                  ###
+                                       [0.00000000e+00, 2.36416743e+03,                                   ###
+                                           6.26598972e+02],                                               ###
+                                       [0.00000000e+00, 0.00000000e+00, 1.00000000e+00]])                 ###
+        self.distortion_coefficients = np.array(                                                          ###
+            [[-0.53835254, 0.74990547, -0.00897318, 0.00293929, -0.59153803]])                            ###
+        #####################################################################################################
 
-        self.dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
-        self.parameters = cv2.aruco.DetectorParameters()
-        detector = cv2.aruco.ArucoDetector(self.dictionary, self.parameters)
+        self.marker_size = 5.9 # side length of the aruco marker used by us
+        self.aruco_id = Aruco_ID # aruco id used in drone
+        self.marker_type = getattr(cv2.aruco, f"{marker_type}") # getting marker type
+        self.resolution = camera_resolution # resolution of camera
 
-        self.capture = cv2.VideoCapture(camera_ID)
-        self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution[0])
-        self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution[1])
-        self.capture.set(cv2.CAP_PROP_FPS, 60)
+        self.dictionary = cv2.aruco.getPredefinedDictionary(self.marker_type) # generating aruco dictionary
+        self.parameters = cv2.aruco.DetectorParameters() # getting aruco parameters
+        detector = cv2.aruco.ArucoDetector(self.dictionary, self.parameters) # creating detector
 
-        self.pluto = Pluto()
-        self.pluto.connect()
-        self.pluto.ping()
+        ##################################### initializing camera ############################################
+        self.capture = cv2.VideoCapture(camera_ID) # starting camera                                       ###
+        self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution[0]) # setting camera frame height      ###
+        self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution[1]) # setting camera frame height       ###
+        self.capture.set(cv2.CAP_PROP_FPS, 60) # setting camera fps                                        ###
+        ######################################################################################################
 
-        self.wait = Delay(self.delta_time)
-        self.target_following_delay = Delay(5)
-        self.start_pid = False
+        ####### starting connection with pluto #######
+        self.pluto = Pluto()                       ###
+        self.pluto.connect()                       ###
+        self.pluto.ping()                          ###
+        ##############################################
+
+        self.wait = Delay(self.delta_time) # this will be used for sampling frequency of pid
+        self.start_pid = False # this flag will be used to start pid algorithm
 
     def __del__(self):
-        self.pluto.Land()
-        self.pluto.disconnect()
+        self.pluto.Land() # land the drone
+        self.pluto.disconnect() # break connection
         print("[DISCONNECTED]")
-        self.capture.release()
-        cv2.destroyAllWindows()
+        self.capture.release() # release camera object
+        cv2.destroyAllWindows() # close all open image videos
         print("Flight Ended")
 
-    def CalculateYaw(self, vector):
+    def CalculateYaw(self, vector): # this function calculates yaw of our drone with respect of camera frame
 
-        orientation_vector = vector[0] - vector[2]
-        return atan(orientation_vector[0]/orientation_vector[1]), vector[0].astype("uint"), vector[2].astype("uint")
+        orientation_vector = vector[0] - vector[2] # orientation vector of drone
+        return atan(orientation_vector[0]/orientation_vector[1]), vector[0].astype("uint"), vector[2].astype("uint") # returning inclination of this vector
 
     def Camera_Measurement(self):
         '''
         Function to get the overhead image and compute the orientation and 
         approximate positions of the drone as seen from the overhead camera
-
         The image from the camera video feed is read and Position approximated through Aruco Marker 
         Detection on the drone. Pose estimation is done with the help of opencv methods.
         '''
+        ret, frame = self.capture.read() # Camera Feed reading frame by frame
+        if ret: # if image is captured
+            gray_img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)                 # converting to gray scale
+            marker_corners, marker_IDs, reject = cv2.aruco.detectMarkers(      # Aruco Detection
+                gray_img, self.dictionary, parameters=self.parameters)         # marker_corners represent the corner points of the aruco
 
+            if marker_corners: # if marker corners are detected i.e. any aruco is detected
 
-        ret, frame = self.capture.read()        # Camera Feed reading frame by frame
-        if ret:
-            gray_img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            marker_corners, marker_IDs, reject = cv2.aruco.detectMarkers(       # Aruco Detection
-                gray_img, self.dictionary, parameters=self.parameters)          # marker_corners represent the corner points of the aruco
-
-            if marker_corners:
-
-                cv2.aruco.drawDetectedMarkers(
+                cv2.aruco.drawDetectedMarkers(                                                           # Drawing detected aruco markers
                     frame, marker_corners, marker_IDs)
-                RotationVector, TransionalVector, _ = cv2.aruco.estimatePoseSingleMarkers(              # Orientation calculation using the detected corners
+                RotationVector, TransionalVector, _ = cv2.aruco.estimatePoseSingleMarkers(               # position calculation using the aruco
                     marker_corners, self.marker_size, self.camera_matrix, self.distortion_coefficients)
-                if isinstance(self.aruco_id, int):
+                if isinstance(self.aruco_id, int):    # aruco id should be int
                     L = marker_IDs.flatten().tolist()
                     if self.aruco_id in L:
                         index = L.index(self.aruco_id)
                         cv2.polylines(frame, [marker_corners[index].astype(
                             np.int32)], True, (0, 255, 255), 2)
-                        # Drawing the Aruco/Drone axes on the camera feed image
+                        # uncomment below line to see the axes
                         cv2.drawFrameAxes(frame, self.camera_matrix, self.distortion_coefficients,
                                           RotationVector[index], TransionalVector[index], 3, 2)
                         cv2.putText(frame, f"x: {round(TransionalVector[index][0][0])} y: {round(TransionalVector[index][0][1])} z: {round(TransionalVector[index][0][2])}", (
-                            50, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (255, 0, 0), 2)             # Estimated X, Y, Z values in the world coordinates as seen from camera
+                            50, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (255, 0, 0), 2)
 
-                        self.Yaw, head, tail = self.CalculateYaw(marker_corners[index].reshape(-1, 2))        # Calculating the Yaw angle
-                        cv2.arrowedLine(frame,tail, head, (255, 0, 0), 2)
+                        self.Yaw, head, tail = self.CalculateYaw(marker_corners[index].reshape(-1, 2))     # Calculating the Yaw angle
+                        cv2.arrowedLine(frame,tail, head, (255, 0, 0), 2)                                  # drawing yaw heading
 
-                        self.measured_position_and_yaw = np.array(                              
+                        self.measured_position_and_yaw = np.array(
                             [TransionalVector[index][0][0], TransionalVector[index][0][1], self.Yaw, TransionalVector[index][0][2]])
-                else:           # When the image is not read
-                    print("Wrong type for iD")
+                else:
+                    print("Wrong type for iD") # else wrong type of aruco id
                     self.__del__()
-                    exit(0)         # If camera image could not be accessed, then close the script to avoid random flight (safety)
-                h, w = frame.shape[:2]                  # Drawing the extracted imformation on the image
-                cv2.circle(
-                    frame, (w//2,h//2), 10, (0, 255, 0), 2)
-                cv2.circle(
-                    frame, (w//2,h//2), 5, (0, 0, 255), -1)
-                cv2.line(frame, (w//2 - int(0.05*w), h//2), (w//2 + int(0.05*w), h//2), (0, 255, 0), 2)
-                cv2.line(frame, (w//2, h//2 - int(0.05*h)), (w//2, h//2 + int(0.05*h)), (0, 255, 0), 2)
-                cv2.imshow("image", frame)
+                    exit(0)
 
-                return True
+                ############################### for drawing on image frame ########################################
+                h, w = frame.shape[:2]                                                                          ###
+                cv2.circle(                                                                                     ###
+                    frame, (w//2,h//2), 10, (0, 255, 0), 2)                                                     ###
+                cv2.circle(                                                                                     ###
+                    frame, (w//2,h//2), 5, (0, 0, 255), -1)                                                     ###
+                cv2.line(frame, (w//2 - int(0.05*w), h//2), (w//2 + int(0.05*w), h//2), (0, 255, 0), 2)         ###
+                cv2.line(frame, (w//2, h//2 - int(0.05*h)), (w//2, h//2 + int(0.05*h)), (0, 255, 0), 2)         ###
+                ###################################################################################################
+
+                cv2.imshow("image", frame) # showing image frame
+
+                return True # return true if aruco detected
             else:
                 cv2.imshow("image", frame)
-                return False
+                return False # if aruco not detected return false
 
                 
-        else:
+        else: # camera not found
             print("error in openning camera")
             self.__del__()
             exit(0)
@@ -183,22 +192,21 @@ class MyDrone():
     def Transform_coordinates(self, x, y, theta):
         '''
         Converting the extracted camera/World coordinates to the coordinates with respect to drone
-
         The image is perceived by the camera and the coordinates extracted using image processing will be with respect to the camera,
         but to command the drone , coordinates are required to be converteed to the coordinates with respect to drone. Here the 
         coordinates are rotated to see the axises as seen by drone and not by the camera.
         '''
-        X = (x*cos(theta)) - (y*sin(theta))         # Using the rotation matrix to find the transformed coordinates,
-        Y = (x*sin(theta)) + (y*cos(theta))         # i.e [X][T] = [X'], X'= Transformed coordinates, X- Original Coordinates, T-rotation matrix 
-        return X, Y                                 
+        X = (x*cos(theta)) - (y*sin(theta)) # Using the rotation matrix to find the transformed coordinates,
+        Y = (x*sin(theta)) + (y*cos(theta)) # i.e [X][T] = [X'], X'= Transformed coordinates, X- Original Coordinates, T-rotation matrix 
+        return X, Y
 
-    def StateEstimator(self):
+    def StateEstimator(self): # this function updates the estimated state(x, y, z, yaw) of the drone
 
-        if self.Camera_Measurement():
-            self.estimated_position_and_yaw = self.measured_position_and_yaw
-            return True
+        if self.Camera_Measurement(): # if camera catches the drone position
+            self.estimated_position_and_yaw = self.measured_position_and_yaw # update estimate state
+            return True # if update is succesfull, return Trur
         else:
-            return False
+            return False # otherwise return False
 
     def Adjust_PID(self):
         
@@ -271,10 +279,7 @@ class MyDrone():
                 self.Send_Input()
 
     def Send_Input(self):
-        '''
-        The parameters ( roll, pitch, yaw, throttle ) for the drone as calculated using PID values and the current set point,
-        are passed to the drone to make it move.
-        '''
+
         if self.start_pid:
             self.pluto.setRC({"roll":int(self.Input[0]),"pitch":int(self.Input[1]),"yaw":int(self.Input[2]),"throttle":int(self.Input[3])})
         else:
@@ -299,27 +304,21 @@ class MyDrone():
         #     f.close()
 
     def Set_Multiple_Targets(self, targets):
-        '''
-        Set the provided target points as the waypoints/set points for the drone path.
-        '''
+
         if isinstance(targets, list):
             self.target_points = targets
         else:
             print("ERROR: targets should be a list")
 
     def Change_Target(self):
-        '''
-        If the current setpoint is reached, set the new point from the path as the new setpoint.
-        '''
+
         if hasattr(self, "target_points"):
             if len(self.target_points) > 0 and self.Change_setpoint():
                 self.setpoint = np.array(self.target_points[0])
                 self.target_points.pop(0)
 
     def Change_setpoint(self):
-        '''
-        This function checks if the drone has reached the destined setpoint. If so, it returns true, else False
-        '''
+
         if max(abs(self.setpoint - self.estimated_position_and_yaw)[:2]) <= self.x_y_error_tolerance and max(abs(self.derr[:2])) <= self.x_y_derr_tolerance:
             return True
         else:
@@ -331,7 +330,7 @@ if __name__ == "__main__":
     starting_delay = Delay(2)
     p_drone = MyDrone(camera_ID=2)
     # p_drone.pluto.HeadFree_OFF()
-    p_drone.Set_Multiple_Targets([[100, 35, 0, drone_height], [-100, 35, 0, drone_height], [-100, -65, 0, drone_height], [100, -65, 0, drone_height], [100, 35, 0, drone_height], [0, 0, 0,drone_height]])
+    p_drone.Set_Multiple_Targets([[100, 30, 0, drone_height], [-100, 30, 0, drone_height], [-100, -70, 0, drone_height], [100, -70, 0, drone_height], [100, 30, 0, drone_height], [0, 0, 0,drone_height]])
     while True:
         if starting_delay.Wait_Once():
 
