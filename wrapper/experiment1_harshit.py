@@ -271,7 +271,10 @@ class MyDrone():
                 self.Send_Input()
 
     def Send_Input(self):
-
+        '''
+        The parameters ( roll, pitch, yaw, throttle ) for the drone as calculated using PID values and the current set point,
+        are passed to the drone to make it move.
+        '''
         if self.start_pid:
             self.pluto.setRC({"roll":int(self.Input[0]),"pitch":int(self.Input[1]),"yaw":int(self.Input[2]),"throttle":int(self.Input[3])})
         else:
