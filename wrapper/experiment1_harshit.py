@@ -118,18 +118,26 @@ class MyDrone():
         return atan(orientation_vector[0]/orientation_vector[1]), vector[0].astype("uint"), vector[2].astype("uint")
 
     def Camera_Measurement(self):
+        '''
+        Function to get the overhead image and compute the orientation and 
+        approximate positions of the drone as seen from the overhead camera
 
-        ret, frame = self.capture.read()
+        The image from the camera video feed is read and Position approximated through Aruco Marker 
+        Detection on the drone. Pose estimation is done with the help of opencv methods.
+        '''
+
+
+        ret, frame = self.capture.read()        # Camera Feed reading frame by frame
         if ret:
             gray_img = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            marker_corners, marker_IDs, reject = cv2.aruco.detectMarkers(
-                gray_img, self.dictionary, parameters=self.parameters)
+            marker_corners, marker_IDs, reject = cv2.aruco.detectMarkers(       # Aruco Detection
+                gray_img, self.dictionary, parameters=self.parameters)          # marker_corners represent the corner points of the aruco
 
             if marker_corners:
 
                 cv2.aruco.drawDetectedMarkers(
                     frame, marker_corners, marker_IDs)
-                RotationVector, TransionalVector, _ = cv2.aruco.estimatePoseSingleMarkers(
+                RotationVector, TransionalVector, _ = cv2.aruco.estimatePoseSingleMarkers(              # Orientation calculation using the detected corners
                     marker_corners, self.marker_size, self.camera_matrix, self.distortion_coefficients)
                 if isinstance(self.aruco_id, int):
                     L = marker_IDs.flatten().tolist()
@@ -137,22 +145,22 @@ class MyDrone():
                         index = L.index(self.aruco_id)
                         cv2.polylines(frame, [marker_corners[index].astype(
                             np.int32)], True, (0, 255, 255), 2)
-                        # uncomment below line to see the axes
+                        # Drawing the Aruco/Drone axes on the camera feed image
                         cv2.drawFrameAxes(frame, self.camera_matrix, self.distortion_coefficients,
                                           RotationVector[index], TransionalVector[index], 3, 2)
                         cv2.putText(frame, f"x: {round(TransionalVector[index][0][0])} y: {round(TransionalVector[index][0][1])} z: {round(TransionalVector[index][0][2])}", (
-                            50, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (255, 0, 0), 2)
+                            50, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (255, 0, 0), 2)             # Estimated X, Y, Z values in the world coordinates as seen from camera
 
-                        self.Yaw, head, tail = self.CalculateYaw(marker_corners[index].reshape(-1, 2))
+                        self.Yaw, head, tail = self.CalculateYaw(marker_corners[index].reshape(-1, 2))        # Calculating the Yaw angle
                         cv2.arrowedLine(frame,tail, head, (255, 0, 0), 2)
 
-                        self.measured_position_and_yaw = np.array(
+                        self.measured_position_and_yaw = np.array(                              
                             [TransionalVector[index][0][0], TransionalVector[index][0][1], self.Yaw, TransionalVector[index][0][2]])
-                else:
+                else:           # When the image is not read
                     print("Wrong type for iD")
                     self.__del__()
-                    exit(0)
-                h, w = frame.shape[:2]
+                    exit(0)         # If camera image could not be accessed, then close the script to avoid random flight (safety)
+                h, w = frame.shape[:2]                  # Drawing the extracted imformation on the image
                 cv2.circle(
                     frame, (w//2,h//2), 10, (0, 255, 0), 2)
                 cv2.circle(
