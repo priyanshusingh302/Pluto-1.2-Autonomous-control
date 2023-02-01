@@ -11,93 +11,105 @@ class Pluto(object):
     __VERSION__ = "1.0"
     __AUTHOR__ = "RoboISM"
 
-    HOST = "192.168.4.1"
-    PORT = 23
-    MSP = telnetlib.Telnet()
-    soc = None
+    HOST = "192.168.4.1"        # default HOST
+    PORT = 23                   # default PORT
+    MSP = telnetlib.Telnet()    
+    soc = None                  # socket object to be assigned after connection
 
-    #Creating a separate thread to monitor the packets that are being recieved from the pluto drone ...............
     def __init__(self):
-        self.monitorThread = Thread(target=self.monitorSerialPort)
-        self.exitNow = Event()
-        self.responses = {}
-        self.responseTimeout = 3
-    #..............................................................................................................
+        '''constructor'''
+        self.monitorThread = Thread(target=self.monitorSerialPort)  # a thread instance that runs the monitorSerialPort function when started
+        self.exitNow = Event()                                      # an event object used to indicate when the monitorSerialPort function should stop listening
+        self.responses = {}                                         # a dictionary to store the responses received from the serial port
+        self.responseTimeout = 3                                    # a value that specifies the timeout duration for the responses.
 
-    #Destructor to close the monitor thread when we want to stop the communication...................................
     def __del__(self):
+        '''destructor'''
         if self.monitorThread.is_alive():
             self.exitNow.set()
-    #.............................................................................................................
 
-    #It can be used to change the host and port
     def setHostPort(self, host, port):
+        '''This function sets the host and port of the Pluto device'''
         self.HOST = host
         self.PORT = port
 
-    #Function to connect the Pluto drone with laptop and at the same time start the monitor thread to recieve the packets sent by pluto drone 
     def connect(self):
+        '''Function to connect the Pluto drone with laptop and at the same time start the monitor thread to recieve 
+        the packets sent by pluto drone '''
         try:
-            self.MSP.open(self.HOST, self.PORT, 2)
-            self.soc = self.MSP.get_socket()
-            self.monitorThread.start()
+            self.MSP.open(self.HOST, self.PORT, 2)      # connect to the host and port specified
+            self.soc = self.MSP.get_socket()            # retrieves the socket object
+            self.monitorThread.start()                  # starts the thread
         except timeout as e:
             print("[ERROR]:", end=' ')
             print(f'{e} \n[EXITING]')
             sys.exit()
-    #............................................................................................................
     
-    #To disconnect the drone.....................................................................................
     def disconnect(self):
+        '''disconnects from pluto'''
         if self.monitorThread.is_alive():
             self.exitNow.set()
         self.MSP.close()
-    #............................................................................................................
 
 
-    class MSPResponse:
+    class MSPResponse:                      # This class holds the information about a response received
         def __init__(self):
-            self.finished = False
-            self.data = []
+            self.finished = False           # a boolean indicating whether the response has finished or not.
+            self.data = []                  # a list of data received from the response.
 
     class MSPSTATES:
-        IDLE = 0
+        '''
+        It specifies the values that represent different states of the MSP protocol
+
+        IDLE: The protocol is in an idle state
+        HEADER_START: The start of a header has been received
+        HEADER_M: The "M" character has been received
+        HEADER_ARROW: The ">" character has been received
+        HEADER_SIZE: The size of the data packet has been received
+        HEADER_CMD: The command of the data packet has been received
+        '''
+        IDLE         = 0
         HEADER_START = 1
-        HEADER_M = 2
+        HEADER_M     = 2
         HEADER_ARROW = 3
-        HEADER_SIZE = 4
-        HEADER_CMD = 5
+        HEADER_SIZE  = 4
+        HEADER_CMD   = 5
 
     class MSPCOMMANDS:
-        MSP_NULL = 0
-        MSP_MODE_RANGES = 34
-        MSP_SET_MODE_RANGE = 35
-        MSP_ADJUSTMENT_RANGES = 52
-        MSP_SET_ADJUSTMENT_RANGE = 53
-        MSP_IDENT = 100
-        MSP_STATUS = 101
-        MSP_RAW_IMU = 102
-        MSP_SERVO = 103
-        MSP_MOTOR = 104
-        MSP_RC = 105
-        MSP_RAW_GPS = 106
-        MSP_COMP_GPS = 107
-        MSP_ATTITUDE = 108
-        MSP_ALTITUDE = 109
-        MSP_ANALOG = 110
-        MSP_BOX = 113
-        MSP_MISC = 114
-        MSP_BOXNAMES = 116
-        MSP_BOXIDS = 119
-        MSP_SET_RAW_RC = 200
-        MSP_ACC_CALIBRATION = 205
-        MSP_MAG_CALIBRATION = 206
-        MSP_SET_MISC = 207
-        MSP_SET_HEAD = 211
-        MSP_SET_COMMAND = 217
+        '''
+        This is a Python class that defines constants for different MultiWii Serial Protocol (MSP) commands. 
+        The different commands can be used to request data from the flight controller or to set different parameters.
+        '''
+        MSP_NULL                    = 0
+        MSP_MODE_RANGES             = 34
+        MSP_SET_MODE_RANGE          = 35
+        MSP_ADJUSTMENT_RANGES       = 52
+        MSP_SET_ADJUSTMENT_RANGE    = 53
+        MSP_IDENT                   = 100
+        MSP_STATUS                  = 101
+        MSP_RAW_IMU                 = 102
+        MSP_SERVO                   = 103
+        MSP_MOTOR                   = 104
+        MSP_RC                      = 105
+        MSP_RAW_GPS                 = 106
+        MSP_COMP_GPS                = 107
+        MSP_ATTITUDE                = 108
+        MSP_ALTITUDE                = 109
+        MSP_ANALOG                  = 110
+        MSP_BOX                     = 113
+        MSP_MISC                    = 114
+        MSP_BOXNAMES                = 116
+        MSP_BOXIDS                  = 119
+        MSP_SET_RAW_RC              = 200
+        MSP_ACC_CALIBRATION         = 205
+        MSP_MAG_CALIBRATION         = 206
+        MSP_SET_MISC                = 207
+        MSP_SET_HEAD                = 211
+        MSP_SET_COMMAND             = 217
 
-    #To convert data
+    '''Converts data to requred format'''
     def toInt16(self, data):
+        ''' from 2 bytes to INT16'''
         if (len(data) == 2):
             return struct.unpack("@h", struct.pack("<BB", data[0], data[1]))[0]
         else:
@@ -105,82 +117,101 @@ class Pluto(object):
 
 
     def toUInt16(self, data):
+        '''from 2 bytes to UINT16'''
         if (len(data) == 2):
             return struct.unpack("@H", struct.pack("<BB", data[0], data[1]))[0]
         else:
             return None
 
     def toInt32(self, data):
+        '''from 4 bytes to INT32'''
         if (len(data) == 4):
             return struct.unpack("@i", struct.pack("<BBBB", data[0], data[1], data[2], data[3]))[0]
         else:
             return None
 
     def toUInt32(self, data):
+        '''from 4 bytes to UINT32'''
         if (len(data) == 4):
             return struct.unpack("@I", struct.pack("<BBBB", data[0], data[1], data[2], data[3]))[0]
         else:
             return None
 
     def fromInt16(self, value):
+        '''from INT16 to 2 bytes'''
         return struct.unpack("<BB", struct.pack("@h", value))
 
     def fromUInt16(self, value):
+        '''from UINT16 to 2 bytes'''
         return struct.unpack("<BB", struct.pack("@H", value))
 
     def fromInt32(self, value):
+        '''from INT32 to 4 bytes'''
         return struct.unpack("<BBBB", struct.pack("@i", value))
 
     def fromUInt32(self, value):
+        '''from UINT32 to 4 bytes'''
         return struct.unpack("<BBBB", struct.pack("@I", value))
 
     def monitorSerialPort(self):
-        '''function to Listen to incomming data from pluto'''
+
+        '''
+        This code listens to incoming data from Pluto. The code uses a state machine to parse the incoming 
+        data stream, which consists of messages starting with "$M>" header, followed by the message size, command, 
+        and data payload. The data payload is also followed by a checksum value.
+        '''
+        
         print("[LISTENING]")
-        state = self.MSPSTATES.IDLE
-        data = bytearray()
+        state = self.MSPSTATES.IDLE                                             # sets state to IDLE
+        data = bytearray()                                                      # creates a byte array
         dataSize = 0
         dataChecksum = 0
         command = self.MSPCOMMANDS.MSP_NULL
         inByte = None
         while (not self.exitNow.isSet()):
             try:
-                inByte = ord(self.soc.recv(1))
+                inByte = ord(self.soc.recv(1))                                  # tries to receive 1 byte of data
             except:
                 pass
-            # print(inByte)
-            if (inByte != None):
-                if (state == self.MSPSTATES.IDLE):
+            if (inByte != None):        
+                if (state == self.MSPSTATES.IDLE):             
                     state = self.MSPSTATES.HEADER_START if (
-                        inByte == 36) else self.MSPSTATES.IDLE  # chr(36)=='$'
+                        inByte == 36) else self.MSPSTATES.IDLE                  # chr(36)=='$'
+                
                 elif (state == self.MSPSTATES.HEADER_START):
                     state = self.MSPSTATES.HEADER_M if (
-                        inByte == 77) else self.MSPSTATES.IDLE  # chr(77)=='M'
+                        inByte == 77) else self.MSPSTATES.IDLE                  # chr(77)=='M'
+               
                 elif (state == self.MSPSTATES.HEADER_M):
                     state = self.MSPSTATES.HEADER_ARROW if (
-                        inByte == 62) else self.MSPSTATES.IDLE  # chr(62)=='>'
+                        inByte == 62) else self.MSPSTATES.IDLE                  # chr(62)=='>'
+                
                 elif (state == self.MSPSTATES.HEADER_ARROW):
                     dataSize = inByte
                     data = bytearray()
                     dataChecksum = inByte
                     state = self.MSPSTATES.HEADER_SIZE
+                
                 elif (state == self.MSPSTATES.HEADER_SIZE):
                     command = inByte
                     dataChecksum = (dataChecksum ^ inByte)
                     state = self.MSPSTATES.HEADER_CMD
+                
                 elif (state == self.MSPSTATES.HEADER_CMD) and (len(data) < dataSize):
                     data.append(inByte)
                     dataChecksum = (dataChecksum ^ inByte)
+                
                 elif (state == self.MSPSTATES.HEADER_CMD) and (len(data) >= dataSize):
-                    if (dataChecksum == inByte):  # If checksum matches
-                        self.responses[command].finished = True
-                        self.responses[command].data = data
-                    else:
-                        self.responses[command].finished = True
-                        self.responses[command].data = None
+                    if (dataChecksum == inByte):                                # if checksum matches
+                        self.responses[command].finished = True                 # sets the finished flag to true
+                        self.responses[command].data = data                     # saves the data received
+                    else:                                                       # else
+                        self.responses[command].finished = True                 # sets the finished flag to true
+                        self.responses[command].data = None                     # discards the data
                     state = self.MSPSTATES.IDLE
             else:
-                sleep(0)
+                sleep(0)                                                        # sleeps the thread if no byte is received
+
         self.disconnect()
 
     def sendData(self, data):
@@ -209,11 +240,14 @@ class Pluto(object):
                 sleep(0)
         else:
             return False
-    #............................................................................................
 
 
-    # This function takes the data to be sent to the drone and convert it into the format of a MSP packet #
     def encodePacket(self, command, data=None):
+        '''
+        This function creates and sends a packet of MSP data to the serial port. The packet contains a header 
+        with information about the data, followed by the data itself, and finally a checksum that is used to check 
+        the integrity of the data during transmission.
+        '''
         if (data is None):
             dataSize = 0
         else:
@@ -237,28 +271,26 @@ class Pluto(object):
         packet.append(checksum)
         self.responses.update({command: self.MSPResponse()})
         return self.sendData(packet)
-    #.............................................................................................
 
-    #this function encapsulates sending the get command and returning the data when it is recieved
     def getData(self, command):
+        '''this function encapsulates sending the get command and returning the data when it is recieved'''
         self.encodePacket(command)
         return self.waitForResponse(command)
 
-    #Sends the RC values to drone
     def setRC(self, values):
         '''
-            Sends RC values to drone
-            Format: Dictionary with following key and value pair
-            {
-                "roll":Value,
-                "pitch":Value,
-                "yaw":Value,
-                "throttle":Value,
-                "aux1":Value,
-                "aux2":Value,
-                "aux3":Value,
-                "aux4":Value,
-            }
+        Sends RC values to drone
+        Format: Dictionary with following key and value pair
+        {
+            "roll":Value,
+            "pitch":Value,
+            "yaw":Value,
+            "throttle":Value,
+            "aux1":Value,
+            "aux2":Value,
+            "aux3":Value,
+            "aux4":Value,
+        }
         '''
         data = bytearray()
         throttle = 0
@@ -301,13 +333,13 @@ class Pluto(object):
     
     def setCommand(self, value):
         '''
-            sends diffrent commands to drone to do certain action
-            1 : Take-off
-            2 : Land
-            3 : Back Flip
-            4 : Front Flip
-            5 : Right Flip
-            6 : Left Flip
+        sends diffrent commands to drone to do certain action
+        1 : Take-off
+        2 : Land
+        3 : Back Flip
+        4 : Front Flip
+        5 : Right Flip
+        6 : Left Flip
         '''
         data = bytearray()
         com = 0
