@@ -503,4 +503,4 @@ class Pluto_Serial(object):
 
 
 if '__name__' == '__main__':
-    Pluto()        
+    Pluto_Serial()        
