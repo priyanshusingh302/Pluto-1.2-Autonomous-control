@@ -4,7 +4,7 @@
 
 ## Project Overview
 
-This repository contains the code and documentation for the Inter IIT Tech Meet 11.0 project, focusing on drone control and swarm communication. The project is developed by a team from Drona Aviation Pvt Ltd.
+This repository contains the code and documentation for the Inter IIT Tech Meet 11.0 project, focusing on drone control and swarm communication.
 
 ### Abstract
 
