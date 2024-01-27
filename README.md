@@ -1,6 +1,7 @@
- [![Youtube-Video]()](https://www.youtube.com/watch?v=PdnE_47Gra4)
 
  # Inter IIT 11.0 - Drone Control and Swarm Communication
+
+[![Youtube-Video](https://img.youtube.com/vi/PdnE_47Gra4/0.jpg)](https://www.youtube.com/watch?v=PdnE_47Gra4)
 
 ## Project Overview
 
